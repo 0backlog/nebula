@@ -1,0 +1,76 @@
+{
+  "name": "@0backlog/nebula",
+  "version": "0.1.0",
+  "description": "A WebGL point field that morphs, reacts and talks",
+  "license": "MIT",
+  "author": "Zero Backlog LLC",
+  "type": "module",
+  "//": "Not on a registry on purpose: this is meant to be forked or copied, not depended on. The name is how examples/demo resolves the engine through the workspace, and private keeps an absent-minded publish from turning that into a promise.",
+  "private": true,
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./face-neutral.json": "./dist/face-neutral.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "LICENSE-APACHE-2.0"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0backlog/nebula.git"
+  },
+  "homepage": "https://0backlog.com/nebula",
+  "bugs": "https://github.com/0backlog/nebula/issues",
+  "keywords": [
+    "webgl",
+    "three",
+    "react",
+    "react-three-fiber",
+    "particles",
+    "point-cloud",
+    "morph",
+    "lip-sync"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src examples/demo/src",
+    "build": "tsup && tsc -p tsconfig.build.json && node scripts/finish-build.mjs && node scripts/check-build.mjs",
+    "demo": "pnpm build && pnpm --filter nebula-demo dev",
+    "clean": "rm -rf dist examples/demo/dist"
+  },
+  "peerDependencies": {
+    "@react-three/fiber": ">=9",
+    "react": ">=19",
+    "react-dom": ">=19",
+    "three": ">=0.163 <1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@react-three/fiber": "^9.6.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.184.0",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.184.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

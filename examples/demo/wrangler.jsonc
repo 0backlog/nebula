@@ -1,0 +1,19 @@
+{
+  // The published demo: a Worker with nothing but static assets, served from a
+  // path on 0backlog.com rather than a workers.dev subdomain (that subdomain
+  // belongs to another product's name, so workers_dev stays off).
+  //
+  // The build is based at /nebula/ and lands in dist/nebula, so the file paths
+  // the asset server matches are the URL paths the route delivers.
+  //
+  //   pnpm --filter nebula-demo build
+  //   pnpm dlx wrangler@4 deploy --config examples/demo/wrangler.jsonc
+  //
+  // No $schema key: wrangler is never installed here (it runs through dlx), so
+  // the node_modules path an editor would resolve one from does not exist.
+  "name": "nebula-demo",
+  "compatibility_date": "2026-08-13",
+  "workers_dev": false,
+  "assets": { "directory": "./dist" },
+  "routes": [{ "pattern": "0backlog.com/nebula*", "zone_name": "0backlog.com" }]
+}

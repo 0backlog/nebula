@@ -1,0 +1,10 @@
+node_modules
+dist
+.wrangler
+*.tsbuildinfo
+coverage
+.DS_Store
+*.tgz
+*.log
+.env
+.env.*

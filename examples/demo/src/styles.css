@@ -1,0 +1,1190 @@
+/* The palette lives in custom properties, so the whole page flips theme by
+ * swapping a handful of values. Dark is the default and needs no attribute;
+ * [data-theme="light"] is the explicit light theme; "system" is the media
+ * query below. app.tsx writes data-theme on <html> and picks the matching
+ * DEFAULT dot tint, because a light page needs dark dots. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --fg: #fafafa;
+  --mut: #8a8a8a;
+  --faint: #5a5a5a;
+  --soft: #262626;
+  /* the wash left of a capsule's indicator: quiet, and it has to invert */
+  --wash: rgb(250 250 250 / 0.09);
+  /* the floating cards: an edge quieter than any border inside them, a
+     translucent plate the field shows through, and a shadow doing the work a
+     hard line used to do */
+  --edge: rgb(250 250 250 / 0.09);
+  --card: rgb(14 14 14 / 0.72);
+  --lift: 0 12px 40px rgb(0 0 0 / 0.38);
+}
+
+:root[data-theme="system"] {
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fafafa;
+  --fg: #101010;
+  --mut: #6e6e6e;
+  --faint: #9b9b9b;
+  --soft: #e2e2e2;
+  /* darker here than the dark theme's is light, and deliberately so: a black
+     wash on a white page has to fight the page for the same legibility a white
+     wash gets for free on black. At 0.06 the filled half of a capsule was
+     invisible against the empty half. */
+  --wash: rgb(10 10 10 / 0.13);
+  --edge: rgb(10 10 10 / 0.1);
+  --card: rgb(252 252 252 / 0.76);
+  --lift: 0 12px 40px rgb(0 0 0 / 0.1);
+}
+
+/* "system" is exactly the light palette again, under the OS preference */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --bg: #fafafa;
+    --fg: #101010;
+    --mut: #6e6e6e;
+    --faint: #9b9b9b;
+    --soft: #e2e2e2;
+    --wash: rgb(10 10 10 / 0.13);
+    --edge: rgb(10 10 10 / 0.1);
+    --card: rgb(252 252 252 / 0.76);
+    --lift: 0 12px 40px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* the three numbers the floating layout is built from: how far a card sits off
+ * the viewport edge, and how wide each card is. The infotip reads them too, so
+ * it cannot drift away from the card it opens beside. Under them, how long a
+ * hover takes to land.
+ *
+ * There is no "not in play" value here any more, because there is no such
+ * state: a control that does not apply to what is on screen is folded away
+ * (see .fold), never greyed. */
+:root {
+  --inset: 14px;
+  --panel: 320px;
+  --picker: 252px;
+  --t-fast: 0.15s;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* full bleed, under everything: the cards float OVER the field instead of
+ * taking a column out of it, so the cloud is never cropped by the panel */
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* the rail is nothing on a wide screen, where each card places itself against
+ * a viewport edge. Below the breakpoint it becomes a real box: the one
+ * scrolling surface under the stage, holding both cards. */
+.rail {
+  display: contents;
+}
+
+/* A floating card: inset from the viewport edge, its own corners, an edge
+ * quieter than anything inside it, and a plate the field reads through. The
+ * shadow is what separates it from the canvas; the border is only there so the
+ * corner has a shape. */
+.card {
+  position: fixed;
+  z-index: 5;
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--lift);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* the settings card, full height and scrolling inside itself */
+.panel {
+  top: var(--inset);
+  right: var(--inset);
+  bottom: var(--inset);
+  width: var(--panel);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 16px 16px 26px;
+}
+
+/* the formation picker, opposite it. It is as tall as its list needs and no
+ * taller, and the list scrolls inside when the viewport is short. */
+.picker {
+  top: var(--inset);
+  left: var(--inset);
+  display: flex;
+  width: var(--picker);
+  max-height: calc(100% - var(--inset) * 2);
+  padding: 6px 6px 6px 14px;
+}
+
+.pickBody {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  /* the body owns the scroll, so it owns the padding that keeps the bar off
+     the pills */
+  padding: 8px 8px 8px 0;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headTools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gh {
+  display: flex;
+  color: var(--mut);
+  transition: color var(--t-fast) ease;
+}
+
+.gh:hover {
+  color: var(--fg);
+}
+
+/* the header's theme cycler, the + on the spotlights heading and the x on a
+ * pocket's own heading: one bare icon, no chrome, so they sit next to the
+ * GitHub mark as equals */
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mut);
+  cursor: pointer;
+  transition: color var(--t-fast) ease;
+}
+
+.iconBtn:hover {
+  color: var(--fg);
+}
+
+/* a section heading carries the section's own hover card, so it is a hover
+ * target and says so: fit-content keeps the zone on the words rather than the
+ * whole column (and stays a block, so the margins still collapse), and the
+ * heading lifts toward the label color under the pointer. h3 is the same
+ * heading one level in, which is a light pocket's own block and nothing else. */
+h2,
+h3 {
+  width: fit-content;
+  margin: 22px 0 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+h3 {
+  margin: 14px 0 6px;
+  /* the capsule's own inset, so a block's title starts where its labels do */
+  padding-left: 10px;
+}
+
+/* the picker opens on a heading, so that one sits at the card's own top */
+.pickBody h2:first-child {
+  margin-top: 0;
+}
+
+.head {
+  cursor: help;
+  transition: color var(--t-fast) ease;
+}
+
+.head:hover,
+.head:focus-visible {
+  color: var(--mut);
+}
+
+/* a heading with controls of its own on the same line: the + that adds a light
+ * pocket, the x that removes one, and the switch that turns a whole section
+ * off.
+ *
+ * The heading's own margins move onto the ROW as padding, at the same numbers,
+ * which is what puts the switch on the heading's line. Centering aligns MARGIN
+ * boxes: with 22px above the words and 8px below them the heading's box is 45px
+ * tall and its text sits low in it, so a 16px switch centered against it rode
+ * visibly high. Padding is outside that alignment, so both items center on the
+ * same 15px line. It is padding rather than margin for a second reason too: it
+ * cannot collapse, so a pocket's 10px of separation still adds to it. */
+.headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0 8px;
+}
+
+.headRow > h2,
+.headRow > h3 {
+  margin: 0;
+}
+
+/* the same one level in, at the sub heading's own rhythm */
+.headRow:has(> h3) {
+  padding: 14px 0 6px;
+}
+
+/* they travel together, hard against the right edge, with the section's switch
+ * always last: it is the one that decides whether the rest is there at all */
+.headActs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The section switch. It reads at the heading's own scale, since it belongs to
+ * the heading rather than to the controls under it, and it wears the panel's
+ * one selected state (below) rather than a plate of its own: a switch that
+ * decides whether a section is there at all is not the loudest thing in it. */
+.toggle {
+  height: 16px;
+  padding: 0 7px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--faint);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    border-color var(--t-fast) ease,
+    background var(--t-fast) ease;
+}
+
+.toggle:hover:not(.on) {
+  color: var(--mut);
+  border-color: var(--faint);
+}
+
+/* THE FOLD, and the panel's ONE answer to anything not currently in play: a
+ * section a switch has closed, a dial that has nothing to turn on the formation
+ * on screen, and a whole section (heading included) whose every control would
+ * be hidden. Nothing here is ever dimmed instead.
+ *
+ * The content is always in the DOM, so this is a transition and not a swap: the
+ * wrapper is a grid whose single row runs from 0fr closed to 1fr open, which is
+ * the one way to animate to a height nobody measured, and the inner box hides
+ * what does not fit yet. The opacity rides the same curve, because height alone
+ * reads as a mechanical push. A closed fold also carries `inert` (controls.tsx),
+ * which takes it out of the tab order and out of the accessibility tree, so this
+ * file only has to make it invisible. */
+.fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.22s ease,
+    opacity 0.22s ease;
+}
+
+.fold[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* min-height 0 is what lets the row reach 0fr at all: a grid item's automatic
+ * minimum size is its content otherwise. The horizontal bleed is for the focus
+ * rings: the box clips, and a ring sits outside the control it belongs to. */
+.foldIn {
+  min-height: 0;
+  overflow: hidden;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+/* the same bleed the sides get, for the same reason and only while the fold is
+ * open. Every fold in this panel ends on a control, and that control wears its
+ * focus ring 3px clear of its own box (1px outline at a 2px offset, further
+ * down), which is 3px the clip was taking. 4px of padding gives the ring the
+ * room, and the negative margin hands the height straight back, so the row is
+ * still the one thing sizing the fold.
+ *
+ * The scope is what keeps a CLOSED fold closed. A padding box cannot be shorter
+ * than its own padding, so an unscoped pair leaves a closed fold clipping to an
+ * 8px band rather than to nothing, and the lower half of that band is the top
+ * of its own first control, hidden by no more than the opacity. Sideways there
+ * is nothing out there to show, which is why that pair needs no scope. The fold
+ * itself measures 0 either way, since the negative margin hands the height
+ * back, but closed here means EMPTY and not merely flat. */
+.fold[data-open] > .foldIn {
+  margin-block: -4px;
+  padding-block: 4px;
+}
+
+/* A SECTION'S body only: the heading's own bottom padding already spaces the
+ * first control, and a grid item's margins cannot collapse out through it, so
+ * without this a folding section would open a few px lower than a plain one. A
+ * fold around a lone control is not a body and keeps its margin, or two folded
+ * dials would sit flush against each other. */
+.fold.body > .foldIn > :first-child {
+  margin-top: 0;
+}
+
+/* the fold still folds, it just arrives */
+@media (prefers-reduced-motion: reduce) {
+  .fold {
+    transition: none;
+  }
+}
+
+/* one light pocket's controls. The blocks repeat, so they lean on their own
+ * heading and a little more air between them rather than on a box. */
+.block + .block {
+  margin-top: 10px;
+}
+
+/* the paragraph under the title: what this is, once, before the controls */
+.intro {
+  margin: 8px 0 0;
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pill {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    border-color var(--t-fast) ease,
+    background var(--t-fast) ease;
+}
+
+/* the same answer the chips give, on the most clicked controls in the demo:
+   they were the only ones saying nothing under the pointer */
+.pill:hover:not(.on) {
+  color: var(--fg);
+  border-color: var(--faint);
+}
+
+/* The picker's list. Thirty odd entries in a narrow card, each pill as wide as
+ * its own label and no wider: the row wraps, so the list reads as words rather
+ * than as a table of equal boxes. It is tighter than the panel's pills, since
+ * there are thirty of them, but never smaller: the type is the panel's one
+ * label treatment here as everywhere. */
+.pickBody .pill {
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+/* the face's own controls, under the face's own pill: they are about the
+ * formation that is on screen, so they sit with the choice instead of in a card
+ * about everything else. Capsules keep the panel's metrics here, since the
+ * language is one language across both cards. */
+.faceBlock {
+  margin-top: 6px;
+}
+
+/* the face's pill and its transport on ONE line, the transport trailing. It
+ * folds away with the face like everything else that stops applying, and the
+ * fold is the trailing item, so nothing moves when it closes. */
+.faceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.faceRow > .fold {
+  margin-left: auto;
+}
+
+/* The capsule, cut to the pill's own metrics: same height, same border, same
+ * transparent background, same type, so the panel reads as one family. There
+ * are two kinds and they share every metric.
+ *
+ * .capsule is the SLIDER. The native range input is stretched invisibly over
+ * the whole pill (interaction and a11y for free); the visible layer is the
+ * fill, the vertical indicator bar, and the label/value text, all
+ * pointer-events none; the capsule element owns the infotip hover. --p is the
+ * 0..1 position set inline by the component.
+ *
+ * .cap is the same pill with a real control on the right instead of a value:
+ * the color pair, a chip that switches something on, a pair of them as one
+ * choice. It lays out as a plain row, since nothing has to sit under a
+ * stretched input. */
+.capsule,
+.cap {
+  position: relative;
+  height: 24px;
+  margin-top: 4px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.capsule {
+  display: block;
+  overflow: hidden;
+}
+
+/* the menu's trigger is the third thing wearing the capsule: same pill, same
+ * label on the left, and the CURRENT VALUE where a slider puts its number, with
+ * the chevron outboard of it. It is a plain button, so it only has to give up
+ * the chrome a button comes with. */
+.trig {
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trig .capValue {
+  right: 24px;
+  max-width: calc(100% - 90px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trig:hover .capValue,
+.trig:focus-visible .capValue {
+  color: var(--mut);
+}
+
+.cap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 2px on the right centers an 18px control in the 22px interior */
+  padding: 0 2px 0 10px;
+}
+
+.capsule input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  cursor: ew-resize;
+}
+
+/* left of the indicator sits a subtly brighter wash than the right */
+.capFill {
+  position: absolute;
+  inset: 0;
+  width: calc(var(--p) * 100%);
+  background: var(--wash);
+  pointer-events: none;
+}
+
+/* the drag stick. It reads at the LABEL's contrast, not the page's brightest
+ * ink: it is part of the capsule, not the loudest thing in the panel. Under
+ * the pointer or a keyboard focus it lifts to full, which is where being
+ * clearly grabbable actually matters. */
+.capThumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--mut);
+  left: calc(5px + var(--p) * (100% - 13px));
+  pointer-events: none;
+  transition: background var(--t-fast) ease;
+}
+
+.capsule:hover .capThumb,
+.capsule:has(input:focus-visible) .capThumb {
+  background: var(--fg);
+}
+
+.capValue {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.capsule .capLabel,
+.capsule .capValue {
+  position: absolute;
+  top: 0;
+  line-height: 22px;
+  pointer-events: none;
+}
+
+.capsule .capLabel {
+  left: 10px;
+}
+
+.capsule .capValue {
+  right: 10px;
+}
+
+/* the row capsule's own parts: the label holds its width and the control it
+ * carries takes the slack, hard against the right edge */
+.cap .capLabel {
+  flex: none;
+}
+
+/* the cursor's effects sit bare in the panel now, with no label column beside
+ * them: a wrapping row of pills only bent that column out of line */
+.panel .pills {
+  margin-top: 6px;
+}
+
+/* the control inside a row capsule: a smaller pill, sized to sit inside the
+ * capsule with 2px to spare, lit when it is the live state */
+.capAct {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    border-color var(--t-fast) ease,
+    background var(--t-fast) ease;
+}
+
+.capAct:hover:not(.on) {
+  color: var(--fg);
+  border-color: var(--faint);
+}
+
+/* the same chip carrying a GLYPH and no word: square, so it reads as a control
+ * for one thing rather than as a pill cut for a label that is missing. The
+ * voice's transport wears it, and so does Pulsation's own section switch: what
+ * that switch turns on is something PLAYING, so it is drawn as the same play
+ * and pause. It is a drawing and nothing more, the switch underneath is the one
+ * every other section wears. */
+.capAct.icon {
+  width: 18px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ONE SELECTED STATE for the whole panel: the section switches, the formation
+ * pills, the cursor's effect pills, the chips inside a capsule and the locator's
+ * z. All of them fill with the same soft wash a capsule slider fills with, lift
+ * their border to --faint and keep the page's live ink. None of them is a solid
+ * plate: a choice already made is not the loudest thing on the card, and a plate
+ * of --fg forced every one of these to invert its own label.
+ *
+ * Hover DEEPENS that wash rather than repainting anything, so a selected control
+ * answers the pointer without its label ever turning the color it sits on. */
+.toggle.on,
+.pill.on,
+.capAct.on,
+.posMode.on {
+  background: var(--wash);
+  border-color: var(--faint);
+  color: var(--fg);
+}
+
+.toggle.on:hover,
+.pill.on:hover,
+.capAct.on:hover,
+.posMode.on:hover {
+  background: var(--soft);
+}
+
+/* ONE TYPE TREATMENT for every label in the two cards: a pill, a chip and a
+ * capsule's own label are the same size and the same ink, so a row of pills and
+ * the sliders under it plainly belong to one panel. Only the selected state
+ * above moves the color, and only the values (--faint) sit under it. */
+.pill,
+.capAct,
+.capLabel {
+  color: var(--mut);
+  font-size: 12px;
+}
+
+/* ONE FOCUS RING, for every control that paints a surface of its own: a
+ * hairline at the label's contrast, held two px off so the shape underneath
+ * stays whole. The two that hide a native input UNDER that surface (the
+ * capsule, the hue bar) key on the input's own :focus-visible through :has, or
+ * the ring would land on nothing anybody can see. A section heading is in here
+ * because it is focusable at all: it carries the section's hover card, and a
+ * keyboard has to be able to open it. The plain buttons keep the browser's own
+ * ring; a menu row is the one control that trades it for the lit state it
+ * already wears under the pointer. */
+.head:focus-visible,
+.capsule:has(input:focus-visible),
+.trig:focus-visible,
+.swatch:focus-visible,
+.pos:focus-visible,
+.pickSv:focus-visible,
+.hue:has(input:focus-visible) {
+  outline: 1px solid var(--mut);
+  outline-offset: 2px;
+}
+
+/* two of them as one choice: only the first takes the auto margin, so the pair
+ * travels to the right edge together */
+.segs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.segs .capAct {
+  margin-left: 0;
+}
+
+/* THE COLOR PAIR: two color chips inside the capsule, NAMED on their left,
+ * since which one is which is the only thing two chips cannot say by
+ * themselves. Both are editable, whichever the theme has selected. The dots
+ * wear it and so does every light pocket, on one set of metrics, so the two
+ * read as the same control saying the same thing. */
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* the capsule is one 24px line, so this label can never be allowed to wrap out
+ * of it */
+.swatchNames {
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* a spotlight's color is that pair PLUS the switch that says whether the prop
+ * is passed at all, so the group hugs the right edge like any other control in
+ * a row capsule. Inside it the auto margins come off: one of them carries the
+ * whole group to the edge, and two would each try to take the same slack. */
+.spotColor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.spotColor .swatches,
+.spotColor .capAct {
+  margin-left: 0;
+}
+
+/* THE TWO CHIPS AS ONE PILL: halves of a single shape 4px apart, each fully
+ * round on the pair's outer side and barely at the seam, so the two read as one
+ * control with a light half and a dark half rather than as two loose buttons.
+ * The dots wear it and so does every light pocket. */
+.swatchPair {
+  display: flex;
+  gap: 4px;
+}
+
+.swatchPair > :first-child {
+  border-radius: 999px 4px 4px 999px;
+}
+
+.swatchPair > :last-child {
+  border-radius: 4px 999px 999px 4px;
+}
+
+/* A COLOR CHIP, and the button that opens this panel's own picker (.pick
+ * below): the browser's color control is an operating system window that no
+ * page can style, so there is none here. A chip's own metrics, the capsule's
+ * border, the pill's radius, and the color it holds painted straight on it.
+ *
+ * Its border pair is the panel's, shifted one step brighter (--faint resting,
+ * --mut live, where a chip goes --soft then --faint), and that is not a whim:
+ * each dot color is the OTHER theme's page color, so one of the two chips is
+ * always the color of the card behind it and would have no shape at all at the
+ * panel's resting edge. The step between the two states is the same. */
+.swatch {
+  width: 26px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--faint);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--t-fast) ease;
+}
+
+.swatch:hover,
+.swatch.on {
+  border-color: var(--mut);
+}
+
+/* The hover card, opening over the canvas from the edge of whichever card the
+ * control lives in: leftward out of the settings card, and rightward out of the
+ * picker, which is where the face's own controls are. position:fixed escapes
+ * the card's scroll clip; the component clamps top to the viewport. Below 768px
+ * there is no canvas beside a card to open into, so it is off (see the narrow
+ * layout at the end of this file). */
+.infotip {
+  position: fixed;
+  right: calc(var(--inset) + var(--panel) + 10px);
+  width: 214px;
+  /* it opens into the canvas, so it can only be as wide as the canvas between
+     the two cards: on a narrow desktop it narrows instead of covering the
+     picker */
+  max-width: calc(100vw - var(--picker) - var(--panel) - var(--inset) * 2 - 18px);
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  box-shadow: var(--lift);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--mut);
+  z-index: 20;
+}
+
+/* the same card, on the other side: a control in the picker opens it out of the
+ * picker's own right edge instead of across the whole page */
+.infotip.picker {
+  right: auto;
+  left: calc(var(--inset) + var(--picker) + 10px);
+}
+
+/* the chevron on the menu's trigger, laid over the capsule's right edge */
+.chev {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+  pointer-events: none;
+}
+
+/* THE PLATE, worn by both things in this panel that open one: the menu below
+ * and the color picker further down. A rounded box with a quiet border and a
+ * shadow doing the separating, out of the 0switch site's own navigation. It is
+ * opaque on purpose: it is the one surface here that has to be read over
+ * anything, cards and canvas alike.
+ *
+ * Both are PORTALED to the body and fixed, because the card they open from both
+ * scrolls and blurs: an absolute plate would be clipped at the card's edge, and
+ * a fixed one inside a backdrop-filter is positioned against that card instead
+ * of the viewport. usePop (controls.tsx) measures the trigger, lands the plate
+ * where the card it lives in asks for (the picker's alongside the trigger, the
+ * settings' leftward under it), clamps both ends to the viewport, flips it above
+ * the trigger when there is more room up there, and closes on any scroll, since
+ * a fixed plate cannot follow the card it was measured against. */
+.menu,
+.pick {
+  position: fixed;
+  z-index: 30;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: var(--lift);
+}
+
+/* THE MENU. A native select could not be cut to this panel's language, so this
+ * is a real one: groups with a divider between them, a row that lights under
+ * the pointer and a mark on the live one. */
+.menu {
+  padding: 4px;
+}
+
+/* the divider is inset the other way: it runs edge to edge inside the plate's
+ * own padding, so it separates the groups without boxing them */
+.menuDiv {
+  height: 1px;
+  margin: 4px -4px;
+  background: var(--soft);
+}
+
+/* what the group is, at the panel's own heading scale */
+.menuHead {
+  padding: 4px 8px 2px;
+  color: var(--faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mut);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuRow:hover,
+.menuRow:focus-visible {
+  background: var(--wash);
+  color: var(--fg);
+  outline: none;
+}
+
+.menuRow.on {
+  color: var(--fg);
+}
+
+.menuText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuMark {
+  flex: none;
+}
+
+/* the real file input behind the row that opens it: never shown, never tabbed
+ * to, clicked by the row itself so the dialog still opens on the user's own
+ * click */
+.menuFile {
+  display: none;
+}
+
+/* THE COLOR PICKER, on that same plate: the same portal, the same side, the
+ * same dismissal (usePop in controls.tsx), because it is the same gesture. The
+ * browser's color control is an operating system window that cannot be styled
+ * at all, so a chip opens this instead.
+ *
+ * Three controls, which is what a color is: the saturation and value area under
+ * the live hue, the hue itself, and the hex. Every one of them commits as it
+ * moves, so the cloud answers the drag rather than the release. */
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+/* nothing in the plate shrinks: a short viewport scrolls it rather than
+   squashing the area you are aiming at */
+.pick > * {
+  flex: none;
+}
+
+/* white to the live hue across, black up from the bottom: the two ramps a
+ * saturation and value area IS. --hue is set inline, off the picker's own
+ * angle. The transparent stop is spelled as a clear black, since a plain
+ * `transparent` is not the same color in every gradient. */
+.pickSv {
+  position: relative;
+  height: 116px;
+  border-radius: 8px;
+  background:
+    linear-gradient(to top, #000, rgb(0 0 0 / 0)),
+    linear-gradient(to right, #fff, var(--hue));
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* the marker has to read on any color it lands on, so it carries its own dark
+   edge rather than the panel's ink */
+.pickDot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+/* the hue, on the capsule's own idea of a slider: a real range input stretched
+   invisibly over the bar, and everything visible above it */
+.hue {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.hue input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+}
+
+.hueThumb {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: calc(var(--p) * (100% - 4px));
+  width: 4px;
+  border: 1px solid var(--fg);
+  border-radius: 3px;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+/* the hex, the one place here you type a color instead of aiming at it */
+.hex {
+  width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hex:focus-visible {
+  outline: 1px solid var(--mut);
+  outline-offset: 1px;
+}
+
+/* The locator: a position in one box. A map of the stage for the first two
+ * axes, and the same box as a wireframe CUBE for the third: the outer frame is
+ * the near plane, the inset frame the far one, and the marker rides the frame
+ * for its own depth. It borrows the capsule's language throughout, the same
+ * border and the same quiet ink, so the marker is a ring on the page rather
+ * than a lamp on a dark box.
+ *
+ * The box takes its PROPORTIONS from what it maps (--pa, set inline), held
+ * inside a band so that neither a letterbox window nor the near square stage
+ * the narrow layout hands it can turn this into a box nobody can aim in. Where
+ * that band bites, the box is a squashed picture of the stage rather than a
+ * scale model of it, and everything drawn in it is squashed the same way: the
+ * ring below is given both of its diameters for exactly that reason
+ * (controls.tsx). */
+.pos {
+  position: relative;
+  aspect-ratio: var(--pa, 2.2);
+  margin-top: 6px;
+  border: 1px solid var(--soft);
+  border-radius: 10px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* the far face and the four edges running back to it. The box is wider than it
+ * is tall, so the viewBox is stretched and the stroke is pinned at 1px. */
+.posCube {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--soft);
+  pointer-events: none;
+}
+
+/* the pocket's reach. BOTH diameters are given, each mapped over its own extent
+ * of the stage, so this is a circle exactly when the box has the stage's ratio
+ * and an oval exactly as far as it does not. Drawing it round either way would
+ * be drawing dots this pocket does not reach. */
+.posRing {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--faint);
+  border-radius: 50%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.posDot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--mut);
+  border-radius: 50%;
+  background: var(--wash);
+  pointer-events: none;
+}
+
+/* the third axis: a chip that switches a drag to depth. Shift does the same
+ * without the trip up here, and a formation with no depth to place does not
+ * draw the chip at all. */
+.posMode {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 16px;
+  padding: 0 7px;
+  border: 1px solid var(--soft);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--faint);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) ease,
+    border-color var(--t-fast) ease,
+    background var(--t-fast) ease;
+}
+
+.posMode:hover:not(.on) {
+  color: var(--mut);
+}
+
+/* the depth readout, since the dial it replaced is gone */
+.posZ {
+  position: absolute;
+  bottom: 6px;
+  right: 9px;
+  color: var(--faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* The narrow layout, in one place. Two floating cards over the canvas is a
+ * wide-screen idea: at 375px there is no room beside anything. So below 768px
+ * the app STACKS. The stage takes a band off the top and holds still, because
+ * a dial you cannot watch is a dial you cannot tune, and the two cards sit in
+ * ONE scrolling rail underneath it, the picker first and the settings after.
+ * They keep their corners, their edge and their spacing, so the language does
+ * not change with the width, only the arrangement. 768px is also where the
+ * field's own mobile point budget starts, so this is the width where that dial
+ * is worth trying. */
+@media (max-width: 767px) {
+  /* svh, not vh: the small viewport height is the one that holds still when a
+   * phone's URL bar slides away, so the stage can never grow into the rail.
+   * The vh line is the fallback for browsers without svh. */
+  .stage {
+    position: static;
+    flex: none;
+    height: 50vh;
+    height: 50svh;
+  }
+
+  /* min-height 0 is what lets a column flex item scroll inside itself instead
+   * of stretching the page */
+  .rail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 10px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px 10px 24px;
+  }
+
+  /* the cards give up their fixed placement and become the rail's two rows.
+   * flex none is load bearing: a flex item shrinks by default, and a card that
+   * shrinks would scroll inside itself instead of letting the rail scroll it.
+   * Nothing is behind them here either (the stage is above, not underneath),
+   * so the blur has nothing to do and comes off. */
+  .card {
+    position: static;
+    flex: none;
+    width: auto;
+    max-height: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* one scroll surface, and it is the rail: the settings card is as tall as
+   * its controls and rides up through it */
+  .panel {
+    overflow: visible;
+    padding: 14px 14px 18px;
+  }
+
+  /* the picker's list is capped so the settings card is always within a swipe
+   * of the top of the rail, instead of thirty pills away. Its scroll CHAINS
+   * here: a thumb that runs the list out should carry on down the rail rather
+   * than stop dead on a card that has nothing left to give. */
+  .pickBody {
+    max-height: 30vh;
+    max-height: 30svh;
+    overscroll-behavior: auto;
+  }
+
+  /* the hover card opens leftward over the canvas, which at this width would
+   * put it off the screen, and a touch screen has no hover to open it with.
+   * So it is suppressed here: every tip is still on its own slider as
+   * aria-describedby, which is the path that was carrying it for screen
+   * readers all along. */
+  .infotip {
+    display: none;
+  }
+}
+
+/* text for the screen reader alone. The copy button's confirmation is a glyph
+ * swap inside an aria-hidden svg, so the words live here, in a status region
+ * clipped out of the visual layout but present in the tree to be announced. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

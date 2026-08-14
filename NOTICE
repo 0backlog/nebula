@@ -1,0 +1,76 @@
+@0backlog/nebula
+Copyright (c) 2026 Zero Backlog LLC
+
+This product includes derived data from the MediaPipe canonical face model.
+
+  canonical_face_model.obj
+  Copyright 2020 The MediaPipe Authors
+  https://github.com/google-ai-edge/mediapipe
+  Licensed under the Apache License, Version 2.0
+
+The file src/field-face-neutral.json (also copied next to the built bundle, and
+inlined into it) contains 468 landmark positions and 898 triangles derived from
+that model, normalized into the face space this library uses. Its landmark index
+space, its triangulation and the region index sets in src/field-face-asset.ts
+all follow the MediaPipe convention.
+
+A copy of the Apache License, Version 2.0 travels with this work as
+LICENSE-APACHE-2.0. Take it with you if you fork this or copy the face out of
+it: handing on that copy is a condition of the licence. It is also available at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+The canonical face model is a synthetic average, not a scan of a person. The
+neutral face this library ships is not a real person's likeness.
+
+The demo application (examples/demo) bundles five music tracks that are not
+covered by this repository's license. They are used under the free licenses
+their sources grant, each of which requires attribution:
+
+  Shotgun by Pat, via NCS
+  http://ncs.io/shotgun
+
+  Cyberpunk by Max Brhon, via NCS
+  http://ncs.io/Cyberpunk
+
+  Suspense by prettyjohn1, via Pixabay
+  https://pixabay.com/users/prettyjohn1-54616349/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=517449
+
+  Carbon Veins by Tony, via Pixabay
+  https://pixabay.com/users/slimeyfox-6041778/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=480982
+
+  Homo Digital by Rockot, via Pixabay
+  https://pixabay.com/users/rockot-1947599/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=245041
+
+The demo shows these credits in the UI whenever a track is AUDIBLE: the credit
+is raised by the sound starting, not by the track being picked, so it appears
+with the music however long a browser holds the sound back. If you remove that
+credit deck, remove the tracks with it. The library itself (src, dist) ships no
+audio.
+
+The demo also bundles five short speech clips that drive the talking face. They
+are NASA recordings, works of the United States government and therefore in the
+public domain: no license to satisfy and no attribution required. The source
+item says the same thing in its own metadata, where it is marked with the
+Creative Commons Public Domain Mark 1.0. They are trimmed, loudness normalized,
+downmixed to mono and re-encoded here, and each one still carries NASA in its
+own tags and the source recording's filename as its title tag, so this claim can
+be checked against the file itself rather than taken on trust.
+
+  voice-briefing.mp3, voice-countdown.mp3, voice-hold.mp3, voice-recorders.mp3,
+  voice-sendoff.mp3
+  From the NASA Audio Highlight Reels, digitized by the Houston Audio Control
+  Room at NASA Johnson Space Center
+  https://archive.org/details/NasaAudioHighlightReels
+  https://creativecommons.org/publicdomain/mark/1.0/
+
+NASA does not endorse this project, and nothing here should be read as if it
+did.
+
+Everything else in this repository is licensed under the MIT License, see
+LICENSE.

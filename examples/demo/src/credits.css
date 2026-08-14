@@ -1,0 +1,81 @@
+/* The soundtrack credit deck. Its own file rather than styles.css: the
+ * component is self contained, and nothing else in the demo styles it.
+ * Every colour resolves through the page's custom properties, with a literal
+ * fallback so the deck stays legible if it is ever lifted out of this demo. */
+
+.sndDeck {
+  position: fixed;
+  inset: 16px 0 auto 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  /* the deck is a zero size anchor over the canvas: only the toasts take the
+     pointer, so the stage underneath stays fully interactive */
+  pointer-events: none;
+}
+
+.sndAnchor {
+  position: relative;
+}
+
+.sndToast {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform-origin: top center;
+  pointer-events: auto;
+
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
+
+  font-size: 12px;
+  line-height: 1;
+  color: var(--mut, #8a8a8a);
+  background: var(--bg, #0a0a0a);
+  border: 1px solid var(--soft, #262626);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.28);
+
+  /* visibility rides the same curve on purpose: a hidden toast is out of the
+     tab order and out of the pointer's way (credits.tsx sets it on the buried
+     and the leaving), and transitioning it holds the toast visible for the
+     whole fade out while showing one lands on the first frame */
+  transition:
+    transform 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sndTitle {
+  color: var(--fg, #fafafa);
+}
+
+.sndVia {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--fg, #fafafa);
+  text-decoration: none;
+  border-bottom: 1px solid var(--faint, #5a5a5a);
+}
+
+.sndVia:hover {
+  border-bottom-color: currentColor;
+}
+
+.sndVia:focus-visible {
+  outline: 1px solid var(--fg, #fafafa);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* the attribution has to survive a motion preference: kill the movement, keep
+   the deck */
+@media (prefers-reduced-motion: reduce) {
+  .sndToast {
+    transition-duration: 0.01ms;
+  }
+}
